@@ -1,0 +1,166 @@
+{% extends 'base.html' %}
+
+{% block title %}Search - Tattoo Reference Finder{% endblock %}
+
+{% block content %}
+<div class="container">
+  <!-- Toast container for notifications -->
+  <div id="toast-container" class="toast-container position-fixed bottom-0 end-0 p-3"></div>
+  
+  <!-- Image Preview Modal -->
+  <div class="modal fade" id="image-preview-modal" tabindex="-1" aria-labelledby="image-preview-modal-label" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="image-preview-modal-label">Image Preview</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body text-center">
+          <div class="position-relative">
+            <div class="modal-image-loading position-absolute top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center" style="background-color: rgba(0,0,0,0.2); z-index: 1;">
+              <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading image...</span>
+              </div>
+            </div>
+            <img id="preview-image" src="" alt="Preview" class="img-fluid rounded" style="transition: opacity 0.3s;">
+          </div>
+          <div id="preview-description" class="mt-3 text-muted"></div>
+          <div id="preview-author" class="small text-muted"></div>
+        </div>
+        <div class="modal-footer">
+          <div class="d-flex justify-content-start flex-grow-1">
+            <div id="preview-tags" class="tags-container"></div>
+          </div>
+          <div class="d-flex gap-2">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            <button type="button" class="btn btn-outline-danger" id="preview-favorite-btn">
+              <i class="fas fa-heart"></i> Favorite
+            </button>
+            <button type="button" class="btn btn-primary" id="preview-save-library-btn">
+              Save to Library
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Header -->
+  <div class="header-container text-center">
+    <h1 class="display-4">Find Perfect Tattoo References</h1>
+    <p class="lead">
+      Search for visual references like "sad female face side on" or "snake curled on branch"
+    </p>
+    
+    <!-- Search Form -->
+    <div class="search-container mt-4">
+      <form id="search-form" class="mb-4">
+        <div class="position-relative">
+          <div class="input-group input-group-lg">
+            <input type="text" id="search-input" class="form-control" 
+                   placeholder="Start typing to search (e.g., floral sleeve design, geometric wolf)" 
+                   autocomplete="off">
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-search me-1"></i> Search
+            </button>
+          </div>
+          
+          <!-- Suggestions dropdown -->
+          <div id="search-suggestions" class="dropdown-menu search-suggestions" style="width: calc(100% - 115px);">
+            <!-- Suggestions will be populated dynamically -->
+          </div>
+        </div>
+        <!-- Removed text about automatic search -->
+      </form>
+      
+      <!-- API Source Toggles and Search Options -->
+      <div class="source-toggles mt-3 mb-4">
+        <div class="d-flex justify-content-center gap-2 flex-wrap">
+          <div class="btn-group" role="group" aria-label="API Source Selection">
+            <button type="button" class="btn btn-outline-primary active" data-source="all">All Sources</button>
+            {% if config.get('UNSPLASH_API_KEY') %}
+            <button type="button" class="btn btn-outline-primary" data-source="unsplash">Unsplash</button>
+            {% endif %}
+            {% if config.get('PEXELS_API_KEY') %}
+            <button type="button" class="btn btn-outline-primary" data-source="pexels">Pexels</button>
+            {% endif %}
+            {% if config.get('PIXABAY_API_KEY') %}
+            <button type="button" class="btn btn-outline-primary" data-source="pixabay">Pixabay</button>
+            {% endif %}
+          </div>
+          
+          <!-- Smart Search Options -->
+          <div class="form-check form-switch d-flex align-items-center ms-3">
+            <input class="form-check-input" type="checkbox" id="expand-search-toggle" checked>
+            <label class="form-check-label ms-2" for="expand-search-toggle">Smart Keyword Expansion</label>
+            <i class="fas fa-info-circle ms-1 text-muted" 
+               data-bs-toggle="tooltip" 
+               data-bs-placement="top" 
+               title="When enabled, your search terms will be expanded with relevant synonyms and tattoo-specific terminology"></i>
+          </div>
+          
+          <!-- Concurrent Search Option -->
+          <div class="form-check form-switch d-flex align-items-center ms-3">
+            <input class="form-check-input" type="checkbox" id="concurrent-search-toggle">
+            <label class="form-check-label ms-2" for="concurrent-search-toggle">Concurrent Search</label>
+            <i class="fas fa-bolt ms-1 text-warning" 
+               data-bs-toggle="tooltip" 
+               data-bs-placement="top" 
+               title="When enabled, searches all sources simultaneously for faster results"></i>
+          </div>
+          
+          <!-- Reranking Option -->
+          <div class="form-check form-switch d-flex align-items-center ms-3">
+            <input class="form-check-input" type="checkbox" id="rerank-toggle" checked>
+            <label class="form-check-label ms-2" for="rerank-toggle">Smart Ranking</label>
+            <i class="fas fa-sort-amount-down ms-1 text-info" 
+               data-bs-toggle="tooltip" 
+               data-bs-placement="top" 
+               title="When enabled, results are ranked by tattoo-specific relevance"></i>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Expansion Info Banner (Hidden by default) -->
+      <div id="expansion-info" class="alert alert-info mb-3" style="display: none;">
+        <span><i class="fas fa-lightbulb me-2"></i><strong>Smart Search:</strong> 
+          Your query was expanded to include relevant terms.
+          <a href="#" id="show-expanded-terms" class="alert-link">View expanded terms</a>
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-12">
+    
+    <div class="col-md-9">
+      <!-- Message Container for alerts -->
+      <div id="message-container" class="my-3"></div>
+      
+      <!-- Loading Indicator -->
+      <div id="loading-indicator" class="text-center my-5" style="display: none;">
+        <div class="spinner-border loading-spinner text-primary" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="mt-2">Searching for images...</p>
+      </div>
+      
+      <!-- Results Grid -->
+      <div id="results-grid" class="row"></div>
+      
+      <!-- Load More Indicator -->
+      <div id="load-more-indicator" class="text-center my-4" style="display: none;">
+        <div class="spinner-border spinner-border-sm text-primary" role="status">
+          <span class="visually-hidden">Loading more...</span>
+        </div>
+        <p class="mt-2">Loading more images...</p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+{% endblock %}

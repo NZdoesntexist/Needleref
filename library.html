@@ -1,0 +1,365 @@
+{% extends 'base.html' %}
+
+{% block title %}My Library - NeedleRef{% endblock %}
+
+{% block styles %}
+<style>
+  /* Styles for category dropdown */
+  .category-dropdown-container .dropdown-menu {
+    max-height: 350px;
+    overflow-y: auto;
+  }
+
+  .category-dropdown-container .dropdown-header {
+    color: #0d6efd;
+    font-size: 1rem;
+    padding-top: 0.75rem;
+  }
+
+  .category-dropdown-container .dropdown-item.ps-4 {
+    padding-left: 2rem !important;
+  }
+
+  .category-dropdown-container .dropdown-item:hover {
+    background-color: rgba(13, 110, 253, 0.1);
+  }
+
+  /* Styles for sidebar categories */
+  #categories-container {
+    max-height: 500px;
+    overflow-y: auto;
+  }
+
+  .category-group {
+    border-bottom: 1px solid rgba(0,0,0,0.1);
+    padding-bottom: 10px;
+  }
+
+  .category-group:last-child {
+    border-bottom: none;
+  }
+
+  .category-header {
+    padding: 8px 4px;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+
+  .category-header:hover {
+    background-color: rgba(13, 110, 253, 0.1);
+  }
+
+  .category-link {
+    color: #333;
+    text-decoration: none;
+  }
+
+  .category-collapse-toggle {
+    color: #555;
+    text-decoration: none;
+    display: inline-block;
+    width: 1rem;
+  }
+
+  .category-collapse-toggle .fa-caret-down {
+    transition: transform 0.2s;
+  }
+
+  .category-collapse-toggle.collapsed .fa-caret-down {
+    transform: rotate(-90deg);
+  }
+
+  .subcategory-collapse {
+    padding-left: 5px;
+    border-left: 1px solid rgba(0,0,0,0.1);
+    margin-left: 8px;
+  }
+
+  .subcategory-list {
+    margin-left: 5px;
+  }
+
+  .subcategory-item {
+    padding: 4px 8px;
+    border-radius: 4px;
+  }
+
+  .subcategory-item:hover {
+    background-color: rgba(13, 110, 253, 0.05);
+  }
+
+  .subcategory-link {
+    color: #555;
+  }
+
+  .badge.rounded-pill {
+    min-width: 30px;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+  <!-- Header -->
+  <div class="header-container text-center">
+    <h1 class="display-4">My NeedleRef Library</h1>
+    <p class="lead">Your saved references organized by subject, style, and anatomy</p>
+  </div>
+
+  <!-- Message Container for alerts -->
+  <div id="library-message" class="my-3"></div>
+
+  <div class="row">
+    <!-- Left Sidebar: Categories -->
+    <div class="col-md-3">
+      <div class="card mb-4 sidebar-card">
+        <div class="card-header bg-dark text-white">
+          <h5 class="mb-0">Categories</h5>
+        </div>
+        <div class="card-body">
+          <!-- Categories will be populated dynamically -->
+          <div id="categories-container">
+            <div class="text-center py-3">
+              <div class="spinner-border spinner-border-sm" role="status">
+                <span class="visually-hidden">Loading categories...</span>
+              </div>
+              <p class="text-muted small">Loading categories...</p>
+            </div>
+          </div>
+        </div>
+        <div class="card-footer">
+          <a href="{{ url_for('index') }}" class="btn btn-primary btn-sm w-100">
+            <i class="fas fa-search me-1"></i>Search New References
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="col-md-9">
+      <!-- Filter controls -->
+      <div class="card mb-4">
+        <div class="card-body">
+          <h5 class="card-title">Filter References</h5>
+          <div class="row">
+            <div class="col-md-12 mb-3">
+              <label class="form-label">Search Tags</label>
+              <div class="row">
+                <div class="col-md-10">
+                  <input type="text" class="form-control" id="tag-search" placeholder="Search by tags...">
+                </div>
+                <div class="col-md-2">
+                  <button class="btn btn-outline-secondary w-100" type="button" id="clear-tag-search">
+                    <i class="fas fa-times me-1"></i>Clear
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-10 mb-2">
+              <label class="form-label">Categories</label>
+              <div class="dropdown category-dropdown-container">
+                <button class="btn btn-outline-primary dropdown-toggle w-100 text-start" type="button" id="categoryDropdownBtn" data-bs-toggle="dropdown" aria-expanded="false">
+                  <span id="selected-category-display">All Categories</span>
+                </button>
+                <ul class="dropdown-menu w-100" id="category-dropdown-menu" aria-labelledby="categoryDropdownBtn">
+                  <li><a class="dropdown-item" href="#" data-main-category="" data-subcategory="">All Categories</a></li>
+                  <li><hr class="dropdown-divider"></li>
+                  <!-- Categories will be populated dynamically -->
+                </ul>
+                <input type="hidden" id="selected-main-category" value="">
+                <input type="hidden" id="selected-subcategory" value="">
+              </div>
+            </div>
+            <div class="col-md-2 mb-2 d-flex align-items-end">
+              <button id="clear-filters" class="btn btn-outline-secondary w-100">
+                <i class="fas fa-times me-1"></i>Clear
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Loading Indicator -->
+      <div id="loading-indicator" class="text-center my-5" style="display: none;">
+        <div class="spinner-border loading-spinner text-primary" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="mt-2">Loading your library...</p>
+      </div>
+
+      <!-- View Toggle -->
+      <div class="mb-3 text-end">
+        <button class="btn btn-outline-secondary me-2" onclick="setLibraryView('grid')">
+          <i class="fas fa-th"></i> Grid
+        </button>
+        <button class="btn btn-outline-secondary" onclick="setLibraryView('list')">
+          <i class="fas fa-bars"></i> List
+        </button>
+      </div>
+
+      <!-- Library Grid -->
+      <div id="library-grid" class="row grid-view"></div>
+
+      <!-- User Upload Section -->
+      <div class="card mb-4">
+        <div class="card-header bg-dark text-white">
+          <h5 class="mb-0">Add Your Own References</h5>
+        </div>
+        <div class="card-body">
+          <div class="mb-3">
+            <label for="uploadInput" class="form-label">Upload your own reference images</label>
+            <input type="file" id="uploadInput" accept="image/*" multiple class="form-control" 
+                   aria-describedby="uploadHelp">
+            <div id="uploadHelp" class="form-text">
+              Select one or multiple images to add to your library. Supported formats: JPG, PNG, GIF
+            </div>
+          </div>
+          <div id="userLibrary" class="row g-3"></div>
+        </div>
+      </div>
+
+      <!-- Empty State -->
+      <div id="empty-state" class="text-center my-5" style="display: none;">
+        <div class="p-5 bg-dark rounded-3">
+          <h2>No Images in Library Yet</h2>
+          <p class="lead">
+            Start adding references to your local library by searching and clicking the "Save to Library" button.
+          </p>
+          <a href="{{ url_for('index') }}" class="btn btn-primary mt-3">
+            <i class="fas fa-search me-2"></i>Search for References
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container for notifications -->
+  <div id="toast-container" class="toast-container position-fixed bottom-0 end-0 p-3"></div>
+
+  <!-- Image Detail Modal -->
+  <div class="modal fade" id="image-detail-modal" tabindex="-1" aria-labelledby="image-detail-modal-label" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="image-detail-modal-label">Image Detail</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body text-center">
+          <img id="detail-image" src="" alt="Image Detail" class="img-fluid rounded">
+          <div id="detail-description" class="mt-3 text-muted"></div>
+          <div id="detail-author" class="small text-muted"></div>
+          <div id="detail-category" class="mt-2 fw-bold"></div>
+        </div>
+        <div class="modal-footer">
+          <div class="d-flex justify-content-start flex-grow-1">
+            <div id="detail-tags" class="tags-container"></div>
+          </div>
+          <button type="button" class="btn btn-outline-secondary" id="edit-tags-btn">
+            <i class="fas fa-tags"></i> Edit Tags
+          </button>
+          <button type="button" class="btn btn-outline-primary" id="change-category-btn">
+            <i class="fas fa-folder"></i> Change Category
+          </button>
+          <button type="button" class="btn btn-success" id="open-sketch-btn">
+            <i class="fas fa-pencil-alt"></i> Open in Sketch
+          </button>
+          <button type="button" class="btn btn-danger" id="remove-from-library-btn">
+            <i class="fas fa-trash-alt"></i> Remove
+          </button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Detail Modal for grid/list view -->
+  <div class="modal fade" id="imageDetailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="modalTitle">Image Detail</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body text-center">
+          <img id="modalImage" src="" alt="Image" class="img-fluid mb-3">
+          <p id="modalDescription" class="text-muted"></p>
+        </div>
+        <div class="modal-footer justify-content-center">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+            <i class="fas fa-arrow-left"></i> Return to Library
+          </button>
+          <button type="button" class="btn btn-info" id="modalCategorizeBtn">
+            <i class="fas fa-folder"></i> Categorize
+          </button>
+          <button type="button" class="btn btn-success" id="modalSketchBtn">
+            <i class="fas fa-pencil-alt"></i> Open in Sketch
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Category Assignment Modal -->
+  <div class="modal fade" id="category-modal" tabindex="-1" aria-labelledby="category-modal-label" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="category-modal-label">Assign Category</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="category-form">
+            <input type="hidden" id="category-image-id">
+            <div class="mb-3">
+              <label for="modal-category-select" class="form-label">Main Category</label>
+              <select id="modal-category-select" class="form-select" required>
+                <option value="">Select a category...</option>
+                <!-- Will be populated dynamically -->
+              </select>
+            </div>
+            <div class="mb-3">
+              <label for="modal-subcategory-select" class="form-label">Subcategory</label>
+              <select id="modal-subcategory-select" class="form-select" required disabled>
+                <option value="">Select a subcategory...</option>
+                <!-- Will be populated dynamically -->
+              </select>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary" id="save-category-btn">Save Category</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tags Modal -->
+  <div class="modal fade" id="tags-modal" tabindex="-1" aria-labelledby="tags-modal-label" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="tags-modal-label">Edit Custom Tags</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="tags-image-id">
+          <div class="mb-3">
+            <label for="custom-tags-input" class="form-label">Enter tags (comma-separated)</label>
+            <input type="text" class="form-control" id="custom-tags-input" placeholder="tag1, tag2, tag3">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary" id="save-tags-btn">Save Tags</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/library.js') }}"></script>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+{% endblock %}

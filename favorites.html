@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+
+{% block title %}My Favorites - NeedleRef{% endblock %}
+
+{% block content %}
+<div class="container">
+  <!-- Header -->
+  <div class="header-container text-center">
+    <h1 class="display-4">My NeedleRef Favorites</h1>
+    <p class="lead">Your saved tattoo inspiration in one place</p>
+  </div>
+
+  <!-- Message Container for alerts -->
+  <div id="favorites-message" class="my-3"></div>
+  
+  <!-- Loading Indicator -->
+  <div id="loading-indicator" class="text-center my-5" style="display: none;">
+    <div class="spinner-border loading-spinner text-primary" role="status">
+      <span class="visually-hidden">Loading...</span>
+    </div>
+    <p class="mt-2">Loading your favorites...</p>
+  </div>
+  
+  <!-- Favorites Grid -->
+  <div id="favorites-grid" class="row"></div>
+  
+  <!-- Empty State -->
+  <div id="empty-state" class="text-center my-5" style="display: none;">
+    <div class="p-5 bg-dark rounded-3">
+      <h2>No Favorites Yet</h2>
+      <p class="lead">
+        Start adding references to your favorites collection by searching and clicking the heart icon.
+      </p>
+      <a href="{{ url_for('index') }}" class="btn btn-primary mt-3">
+        <i class="fas fa-search me-2"></i>Search for References
+      </a>
+    </div>
+  </div>
+  
+  <!-- Toast Container for notifications -->
+  <div id="toast-container" class="toast-container position-fixed bottom-0 end-0 p-3"></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/favorites.js') }}"></script>
+{% endblock %}
